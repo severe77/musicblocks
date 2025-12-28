@@ -375,6 +375,7 @@ class WidgetWindow {
      * @public
      * @returns {void}
      */
+
     close() {
         document.removeEventListener("mouseup", this._dragTopHandler, true);
         document.removeEventListener("mousemove", this._docMouseMoveHandler, true);
