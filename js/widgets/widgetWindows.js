@@ -224,20 +224,28 @@ class WidgetWindow {
     }
 
     _overlay(add) {
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+
         if (add) {
             this._frame.style.zIndex = "10";
+
+            if (isIOS) {
+                this._overlayframe.style.display = "none";
+                return;
+            }
+
+            this._overlayframe.style.display = "block";
             this._overlayframe.style.left = "0";
             this._overlayframe.style.zIndex = "1";
             this._overlayframe.style.top = "64px";
-            this._overlayframe.style.width = "100vw";
-            this._overlayframe.style.height = "calc(100vh - 64px)";
-            this._overlayframe.style.border = "0.25vw solid black";
+            this._overlayframe.style.width = "100%";
+            this._overlayframe.style.height = "100%";
+            this._overlayframe.style.border = "none";
             this._overlayframe.style.backgroundColor = "rgba(255,255,255,0.75)";
         } else {
             this._frame.style.zIndex = "10000";
-            this._overlayframe.style.border = "0px";
-            this._overlayframe.style.zIndex = "-1";
-            this._overlayframe.style.backgroundColor = "rgba(255,255,255,0)";
+            this._overlayframe.style.display = "none";
+            this._overlayframe.style.backgroundColor = "transparent";
         }
     }
 
