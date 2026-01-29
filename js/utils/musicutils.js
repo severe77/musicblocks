@@ -4071,18 +4071,6 @@ const GetNotesForInterval = tur => {
 };
 
 /**
- * Encodes a string to Base64 format.
- * @param {string} str - The string to encode.
- * @returns {string} - The Base64 encoded string.
- */
-function base64Encode(str) {
-    const encoder = new TextEncoder();
-    const uint8Array = encoder.encode(str);
-    const binaryString = String.fromCharCode(...uint8Array);
-    return binaryString;
-}
-
-/**
  * Get the note based on various parameters.
  * @function
  * @param {string|number} noteArg - The note name or pitch number.
