@@ -1286,7 +1286,7 @@ Turtles.TurtlesView = class {
         let resizeTimeout;
         let ticking = false;
 
-        window.addEventListener("resize", () => {
+        const resizeHandler = () => {
             const isHighEndDevice =
                 navigator.hardwareConcurrency && navigator.hardwareConcurrency >= 4;
 
@@ -1308,7 +1308,14 @@ Turtles.TurtlesView = class {
                     __makeBoundary2();
                 }, 150); // Wait 150ms after the last resize event to execute
             }
-        });
+        };
+
+        if (this._resizeHandler) {
+            window.removeEventListener("resize", this._resizeHandler);
+        }
+
+        this._resizeHandler = resizeHandler;
+        window.addEventListener("resize", this._resizeHandler);
 
         return this;
     }
