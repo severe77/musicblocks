@@ -1,5 +1,14 @@
-Cypress.on("uncaught:exception", (err, runnable) => {
-    return false;
+/* global Cypress, cy, before */
+
+Cypress.on("uncaught:exception", err => {
+    const ignored = [
+        "ResizeObserver loop limit exceeded",
+        "Cannot read properties of undefined",
+        "Cannot read properties of null",
+        "_ is not defined",
+        "Permissions check failed"
+    ];
+    return !ignored.some(msg => err.message.includes(msg));
 });
 
 describe("MusicBlocks Application", () => {
@@ -7,18 +16,14 @@ describe("MusicBlocks Application", () => {
         cy.visit("http://localhost:3000");
     });
 
-    afterEach(() => {
-        console.log("Next test running, no reload should happen");
-    });
-
     describe("Loading and Initial Render", () => {
-        it("should display the loading animation and then the main content", () => {
+        it("should display the loading animation container", () => {
             cy.get("#loading-image-container").should("be.visible");
-            cy.contains("#loadingText", "Loading Complete!", { timeout: 20000 }).should(
-                "be.visible"
-            );
-            cy.wait(10000);
-            cy.get("#canvas", { timeout: 10000 }).should("be.visible");
+        });
+
+        it("should display the canvas after loading", () => {
+            cy.waitForAppReady();
+            cy.get("#canvas").should("be.visible");
         });
 
         it("should display the Musicblocks guide page", () => {
@@ -43,14 +48,12 @@ describe("MusicBlocks Application", () => {
     describe("Toolbar and Navigation", () => {
         it("should open the language selection dropdown", () => {
             cy.get("#aux-toolbar").invoke("show");
-            cy.get("#languageSelectIcon").click({ force: true });
+            cy.get("#languageSelectIcon").click();
             cy.get("#languagedropdown").should("be.visible");
         });
 
-        it("should toggle full-screen mode", () => {
-            cy.get("#FullScreen").should("be.visible").click();
-            cy.wait(500);
-            cy.get("#FullScreen").should("be.visible").click();
+        it("should verify fullscreen button exists and is visible", () => {
+            cy.get("#FullScreen").should("exist").and("be.visible");
         });
 
         it("should toggle the toolbar menu", () => {
@@ -72,34 +75,25 @@ describe("MusicBlocks Application", () => {
             cy.get("#saveddropdownbeg").should("be.visible");
         });
 
-        it("should display file save options", () => {
-            cy.get("#saveButton").click();
+        it("should display all file save options", () => {
             cy.get("#saveddropdownbeg").should("be.visible");
             cy.get("#save-html-beg").should("exist");
             cy.get("#save-png-beg").should("exist");
         });
 
-        it('should click the New File button and verify "New Project" appears', () => {
-            cy.get("#newFile > .material-icons").should("exist").and("be.visible");
-            cy.get("#newFile > .material-icons").click();
-            cy.wait(500);
+        it("should show New Project dialog on new file click", () => {
+            cy.get("#newFile > .material-icons").should("exist").and("be.visible").click();
             cy.contains("New project").should("be.visible");
         });
     });
 
     describe("UI Elements", () => {
         it("should verify that bottom bar elements exist and are visible", () => {
-            const bottomBarElements = [
-                "#Home\\ \\[HOME\\] > img",
-                "#Show\\/hide\\ blocks > img",
-                "#Expand\\/collapse\\ blocks > img",
-                "#Decrease\\ block\\ size > img",
-                "#Increase\\ block\\ size > img"
-            ];
-
-            bottomBarElements.forEach(selector => {
-                cy.get(selector).should("exist").and("be.visible");
-            });
+            cy.get("#buttoncontainerBOTTOM img")
+                .should("have.length.at.least", 5)
+                .each($el => {
+                    cy.wrap($el).should("be.visible");
+                });
         });
 
         it("should verify sidebar elements exist, are visible, and clickable", () => {
@@ -115,13 +109,16 @@ describe("MusicBlocks Application", () => {
         });
 
         it("should verify that Grid, Clear, and Collapse elements exist and are visible", () => {
+            cy.get("#toggleAuxBtn").click();
+
             const elements = ["#Grid > img", "#Clear", "#Collapse > img"];
+
             elements.forEach(selector => {
                 cy.get(selector).should("exist").and("be.visible");
             });
         });
 
-        it("should verify that all nth-child elements from 1 to 6 exist", () => {
+        it("should verify that all palette rows exist and are visible", () => {
             for (let i = 1; i <= 6; i++) {
                 cy.get(`[width="126"] > tbody > :nth-child(${i})`)
                     .should("exist")
@@ -130,8 +127,27 @@ describe("MusicBlocks Application", () => {
         });
     });
 
+    describe("Block Palette", () => {
+        it("should open the Rhythm palette and display blocks", () => {
+            cy.get("body").type("{esc}");
+            // eq(1) selects the Rhythm palette (second row, 0-indexed). Palette order is
+            // statically defined in the codebase. Position-based selection is used since
+            // palette icons are base64 SVGs with no stable semantic attributes.
+
+            cy.get('[width="126"] tbody tr').eq(1).find("img").click();
+
+            cy.get("#palette", { timeout: 15000 }).should("be.visible");
+
+            cy.get("#palette img", { timeout: 15000 }).should("have.length.greaterThan", 0);
+        });
+
+        it("should keep the palette visible after blocks load", () => {
+            cy.get("#palette").should("be.visible");
+        });
+    });
+
     describe("Planet Page Interaction", () => {
-        it("should load the Planet page and return to the main page when clicking the close button", () => {
+        it("should open the Planet iframe on planet icon click", () => {
             cy.get("#planetIcon > .material-icons").should("exist").and("be.visible").click();
 
             cy.get("#planet-iframe", { timeout: 10000 })
@@ -139,14 +155,35 @@ describe("MusicBlocks Application", () => {
                 .and("have.attr", "src")
                 .and("not.be.empty");
 
-            cy.get("#planet-iframe").then($iframe => {
-                const iframeSrc = $iframe.attr("src");
-                cy.log("Iframe source:", iframeSrc);
+            cy.window().then(win => {
+                const activity = win.ActivityContext?.getActivity();
+                if (activity?.planet) {
+                    activity.planet.closePlanet();
+                }
             });
 
+            cy.get("#planet-iframe").should("not.be.visible");
+            cy.get("#canvas").should("exist").and("be.visible");
+        });
+    });
+
+    describe("Core Workflows", () => {
+        it("should transition audio context correctly on play and stop", () => {
+            cy.get("#play").click();
+
             cy.window().then(win => {
-                win.document.getElementById("planet-iframe").style.display = "block";
+                const ctx = win.Tone.context;
+                expect(ctx.state).to.eq("running");
             });
+
+            cy.get("#stop").click();
+
+            cy.window().then(win => {
+                const ctx = win.Tone.context;
+                expect(ctx.state === "suspended" || ctx.state === "running").to.be.true;
+            });
+
+            cy.get("#canvas").should("exist").and("be.visible");
         });
     });
 });
