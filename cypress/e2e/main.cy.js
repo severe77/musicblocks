@@ -52,6 +52,26 @@ describe("MusicBlocks Application", () => {
             cy.get("#languagedropdown").should("be.visible");
         });
 
+        it("should change language to Spanish and update the welcome text", () => {
+            cy.get(".heading").should("contain.text", "Welcome to Music Blocks");
+
+            cy.get("#aux-toolbar").invoke("show");
+            cy.get("#languageSelectIcon").click();
+            cy.get("#languagedropdown").should("be.visible");
+            cy.get("#es").click();
+
+            cy.get(".heading", { timeout: 10000 })
+                .should("not.contain.text", "Welcome to Music Blocks")
+                .and("contain.text", "Bloques");
+
+            cy.get("#languageSelectIcon").click();
+            cy.get("#enUS").click();
+            cy.get(".heading", { timeout: 10000 }).should(
+                "contain.text",
+                "Welcome to Music Blocks"
+            );
+        });
+
         it("should verify fullscreen button exists and is visible", () => {
             cy.get("#FullScreen").should("exist").and("be.visible");
         });
@@ -144,6 +164,18 @@ describe("MusicBlocks Application", () => {
         it("should keep the palette visible after blocks load", () => {
             cy.get("#palette").should("be.visible");
         });
+
+        it("should open Rhythm blocks and close the palette with Escape", () => {
+            cy.get('[width="126"] tbody tr').eq(1).find("img").click();
+
+            cy.get("#palette", { timeout: 15000 }).should("be.visible");
+            cy.get("#palette img", { timeout: 15000 }).should("have.length.greaterThan", 0);
+
+            cy.get("body").type("{esc}", { force: true });
+
+            cy.get("#palette", { timeout: 10000 }).should("not.be.visible");
+            cy.get("#canvas").should("be.visible");
+        });
     });
 
     describe("Planet Page Interaction", () => {
@@ -184,6 +216,32 @@ describe("MusicBlocks Application", () => {
             });
 
             cy.get("#canvas").should("exist").and("be.visible");
+        });
+
+        it("should create a new project and keep the UI stable", () => {
+            cy.get('[width="126"] tbody tr').eq(1).find("img").click();
+            cy.get("#palette", { timeout: 15000 }).should("be.visible");
+
+            cy.get("#newFile > .material-icons").should("be.visible").click();
+
+            cy.contains("New project").should("be.visible");
+            cy.get("#confirmation-message").should(
+                "contain.text",
+                "Are you sure you want to create a new project?"
+            );
+
+            cy.get("#new-project").should("be.visible").click();
+
+            cy.get("#modal-container").should("not.be.visible");
+            cy.get("#palette").should("not.be.visible");
+            cy.get("#canvas").should("be.visible");
+            cy.get(".heading").should("contain.text", "Welcome to Music Blocks");
+
+            cy.get("#aux-toolbar").then($toolbar => {
+                const wasVisible = $toolbar.is(":visible");
+                cy.get("#toggleAuxBtn").click();
+                cy.get("#aux-toolbar").should(wasVisible ? "not.be.visible" : "be.visible");
+            });
         });
     });
 });
