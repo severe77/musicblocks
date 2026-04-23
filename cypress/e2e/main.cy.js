@@ -52,6 +52,25 @@ describe("MusicBlocks Application", () => {
             cy.get("#languagedropdown").should("be.visible");
         });
 
+        it("should change language preference", () => {
+            cy.get("#aux-toolbar").invoke("show");
+            cy.get("#languageSelectIcon").click();
+            cy.get("#languagedropdown").should("be.visible");
+
+            cy.get("#languagedropdown option").then($options => {
+                const newLang = [...$options].find(opt => opt.value !== "enUS");
+
+                if (newLang) {
+                    cy.get(`#${newLang.value}`).click();
+                }
+            });
+
+            cy.contains("Refresh").should("be.visible");
+
+            cy.get("#languageSelectIcon").click();
+            cy.get("#enUS").click();
+        });
+
         it("should verify fullscreen button exists and is visible", () => {
             cy.get("#FullScreen").should("exist").and("be.visible");
         });
@@ -84,6 +103,17 @@ describe("MusicBlocks Application", () => {
         it("should show New Project dialog on new file click", () => {
             cy.get("#newFile > .material-icons").should("exist").and("be.visible").click();
             cy.contains("New project").should("be.visible");
+        });
+
+        it("should create a new project and reset the UI", () => {
+            cy.get("#newFile > .material-icons").should("be.visible").click();
+
+            cy.contains("New project").should("be.visible");
+
+            cy.get("#new-project").should("be.visible").click();
+
+            cy.get("#modal-container").should("not.be.visible");
+            cy.get("#canvas").should("be.visible");
         });
     });
 
